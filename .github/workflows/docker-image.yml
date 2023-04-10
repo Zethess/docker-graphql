@@ -11,8 +11,42 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-
+    #toma todo el codigo que tengo en mi repositorio
     steps:
-    - uses: actions/checkout@v3
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Git Semantic Version
+      uses: PaulHatch/semantic-version@v4.0.3
+      with:
+        major_pattern: "major:"
+        minor_pattern: "feat:"
+        format: "${major}.${minor}.${patch}-prerelease${increment}"
+      id: version
+    #autenticación en docker
+    - name: Docker Login
+      env:
+        DOCKER_USER: ${{ secrets.DOCKER_USER }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      #Esta tubería básicamente significa que cada una de las siguientes líneas que yo voy a colocar son líneas independientes que vamos a ingresar manualmente en la en la consola, por ejemplo, voy a colocar aquí
+      run: |
+        docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+        
+    - name: Build Docker Image
+      env:
+        NEW_VERSION: ${{ steps.version.outputs.version }}
+      run: |
+        docker build -t zethess/docker-graphql:$NEW_VERSION .
+        docker build -t zethess/docker-graphql:latest .
+    - name: Push Docker Image
+      env:
+        NEW_VERSION: ${{ steps.version.outputs.version }}
+      run: |
+        docker push zethess/docker-graphql:$NEW_VERSION
+        docker push zethess/docker-graphql:latest
+      
+
+#     - name: Build the Docker image
+#       run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
